@@ -1,0 +1,47 @@
+name: Sync Language Keys
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository (gridbox-x2-lang)
+        uses: actions/checkout@v4
+
+      - name: Checkout source repository (gridbox-x2)
+        uses: actions/checkout@v4
+        with:
+          repository: 'Balbooa-Extensions/gridbox-x2'
+          token: ${{ secrets.GH_PAT }}
+          path: 'temp_gridbox_x2'
+
+      - name: Prepare en-GB files structure
+        run: |
+          mkdir -p com_gridbox_en-GB/administrator com_gridbox_en-GB/site
+          cp temp_gridbox_x2/packages/com_gridbox/admin/language/admin/en-GB/en-GB.com_gridbox.ini com_gridbox_en-GB/administrator/
+          cp temp_gridbox_x2/packages/com_gridbox/admin/language/admin/en-GB/en-GB.com_gridbox.sys.ini com_gridbox_en-GB/administrator/
+          cp temp_gridbox_x2/packages/com_gridbox/admin/language/site/en-GB/en-GB.com_gridbox.ini com_gridbox_en-GB/site/
+          rm -rf temp_gridbox_x2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install deep-translator || true
+
+      - name: Run synchronization and sorting script
+        run: python scripts/sync.py
+
+      - name: Commit and push changes if any
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-sort and sync language keys from gridbox-x2 [skip ci]" && git push)
